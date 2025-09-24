@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "blockerino",
-    "slug": "blockerino",
+    "name": "Block Blast Pro",
+    "slug": "block-blast-pro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,10 +12,18 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.blockblastpro.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -45,7 +53,15 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "baseUrl": "/blockerino"
+      "baseUrl": "/block-blast-pro"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "af2be6d4-ea66-40a0-b629-470707eaf378"
+      }
     }
   }
 }

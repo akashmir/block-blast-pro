@@ -89,7 +89,19 @@ function ComboBar({ lastBrokenLine, handSize }: ComboBarProps) {
 	);
 };
 
-export function StickyGameHud({gameMode, score}: {gameMode: GameModeType, score: SharedValue<number>}) {
+export function StickyGameHud({
+	gameMode, 
+	score, 
+	onPremiumPress, 
+	onLeaderboardPress, 
+	onAchievementsPress
+}: {
+	gameMode: GameModeType, 
+	score: SharedValue<number>,
+	onPremiumPress?: () => void,
+	onLeaderboardPress?: () => void,
+	onAchievementsPress?: () => void
+}) {
 	const [ highestScore, setHighestScore ] = useState(0);
 	const [ scoreState, setScoreState ] = useState(score.value);
 
@@ -110,6 +122,9 @@ export function StickyGameHud({gameMode, score}: {gameMode: GameModeType, score:
 	return <>
 		<Text style={styles.highScoreLabel}>{"👑" + Math.max(scoreState, highestScore)}</Text>
 		<SettingsButton></SettingsButton>
+		<PremiumButton onPress={onPremiumPress}></PremiumButton>
+		<LeaderboardButton onPress={onLeaderboardPress}></LeaderboardButton>
+		<AchievementsButton onPress={onAchievementsPress}></AchievementsButton>
 	</>
 }
 
@@ -119,6 +134,30 @@ function SettingsButton() {
 	return <Pressable onPress={() => {appendAppState(MenuStateType.OPTIONS)}} style={styles.settingsButton}>
 		<Text style={styles.settingsEmoji}>
 			{"⚙️"}
+		</Text>
+	</Pressable>
+}
+
+function PremiumButton({ onPress }: { onPress?: () => void }) {
+	return <Pressable onPress={onPress} style={styles.premiumButton}>
+		<Text style={styles.buttonEmoji}>
+			{"💎"}
+		</Text>
+	</Pressable>
+}
+
+function LeaderboardButton({ onPress }: { onPress?: () => void }) {
+	return <Pressable onPress={onPress} style={styles.leaderboardButton}>
+		<Text style={styles.buttonEmoji}>
+			{"🏆"}
+		</Text>
+	</Pressable>
+}
+
+function AchievementsButton({ onPress }: { onPress?: () => void }) {
+	return <Pressable onPress={onPress} style={styles.achievementsButton}>
+		<Text style={styles.buttonEmoji}>
+			{"🎖️"}
 		</Text>
 	</Pressable>
 }
@@ -140,6 +179,49 @@ const styles = StyleSheet.create({
 	settingsEmoji: {
 		color: 'white',
 		fontSize: 30
+	},
+	premiumButton: {
+		width: 50,
+		height: 50,
+		borderRadius: 18,
+		backgroundColor: 'rgba(255, 215, 0, 0.8)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		position: 'absolute',
+		alignSelf: 'flex-end',
+		zIndex: 1000,
+		top: 110,
+		right: 50
+	},
+	leaderboardButton: {
+		width: 50,
+		height: 50,
+		borderRadius: 18,
+		backgroundColor: 'rgba(20, 20, 20, 0.8)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		position: 'absolute',
+		alignSelf: 'flex-end',
+		zIndex: 1000,
+		top: 170,
+		right: 50
+	},
+	achievementsButton: {
+		width: 50,
+		height: 50,
+		borderRadius: 18,
+		backgroundColor: 'rgba(20, 20, 20, 0.8)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		position: 'absolute',
+		alignSelf: 'flex-end',
+		zIndex: 1000,
+		top: 230,
+		right: 50
+	},
+	buttonEmoji: {
+		color: 'white',
+		fontSize: 24
 	},
 	highScoreLabel: {
 		color: 'rgb(240, 175, 12)',

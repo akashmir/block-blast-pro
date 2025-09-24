@@ -35,7 +35,7 @@ function BlockerinoLogo({blockSize, style}: {blockSize: number, style: ViewStyle
 	const nTop = blockSize * 80/30
 	const nLeft = blockSize * 50/30
 	return <View style={[{width: blockSize * 4 + nLeft, height: blockSize * 4 + nTop}, style]}>
-		<PieceView style={{boxShadow: '5px 5px 50px #000000', backgroundColor: 'rgba(0, 0, 0, 0.6)'}} piece={logoBPiece} blockSize={blockSize}></PieceView>
+		<PieceView style={{shadowColor: '#000000', shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.8, shadowRadius: 25, elevation: 8, backgroundColor: 'rgba(0, 0, 0, 0.6)'}} piece={logoBPiece} blockSize={blockSize}></PieceView>
 		<PieceView style={{transform: [{ translateX: nLeft }, { translateY: nTop }], position: 'absolute', zIndex: -1}} piece={logoNPiece} blockSize={blockSize}></PieceView>
 	</View>
 }

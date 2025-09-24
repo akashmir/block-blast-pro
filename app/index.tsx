@@ -8,7 +8,7 @@ import Animated, {
 	ReanimatedLogLevel,
 	configureReanimatedLogger,
 } from "react-native-reanimated";
-import Game from "@/components/game/Game";
+import EnhancedGame from "@/components/game/EnhancedGame";
 import { GameModeType } from '@/hooks/useAppState';
 import React from "react";
 import OptionsMenu from "@/components/OptionsMenu";
@@ -19,7 +19,6 @@ import { PieceParticle } from "@/components/PieceParticle";
 
 configureReanimatedLogger({
 	level: ReanimatedLogLevel.warn,
-	strict: false,
 });
 
 export default function App() {
@@ -44,7 +43,7 @@ export default function App() {
 			))}
 
 			{ (appState.containsState(MenuStateType.MENU) && !gameMode) && <MainMenu></MainMenu> }
-			{ gameMode && <Game gameMode={gameMode}></Game> }
+			{ gameMode && <EnhancedGame gameMode={gameMode}></EnhancedGame> }
 			{ appState.containsState(MenuStateType.OPTIONS) && <OptionsMenu></OptionsMenu> }
 			{ appState.containsState(MenuStateType.HIGH_SCORES) && <HighScores></HighScores>}
 		</Animated.View>

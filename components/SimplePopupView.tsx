@@ -14,7 +14,5 @@ export default function SimplePopupView({children, style}: {children: any, style
 		alignItems: 'center',
 		position: 'absolute',
 		zIndex: 100,
-        overflowY: 'scroll',
-		boxSizing: 'border-box'
 	}, ...style]}>{children}</View>
 }

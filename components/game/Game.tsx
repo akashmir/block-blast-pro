@@ -107,7 +107,7 @@ export const Game = (({gameMode}: {gameMode: GameModeType}) => {
 					combo.value = 0;
 				}
 			}
-			if (scoreStorageId)
+			if (scoreStorageId.value)
 				runOnJS(updateHighScore)(scoreStorageId.value!, {score: score.value, date: new Date().getTime(), type: gameMode});
 			
 			const newHand = [...hand.value];

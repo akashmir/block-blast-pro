@@ -315,33 +315,29 @@ function getBorderColors(backgroundColor: Color) {
 	};
 }
 
-export function createFilledBlockStyle(color: Color, borderWidth: number = 7): object {
-	"worklet";
-	return {
-		backgroundColor: colorToHex(color), //'rgb(131, 83, 203)'
-		...getBorderColors(color),
-		borderWidth: borderWidth,
-		boxSizing: 'border-box',
-		boxShadow: 'none',
-		shadowOpacity: 0,
+	export function createFilledBlockStyle(color: Color, borderWidth: number = 7): object {
+		"worklet";
+		return {
+			backgroundColor: colorToHex(color), //'rgb(131, 83, 203)'
+			...getBorderColors(color),
+			borderWidth: borderWidth,
+			shadowOpacity: 0,
+		}
 	}
-}
 
-export function createEmptyBlockStyle(): object {
-	"worklet";
-	const borderColor = 'rgb(40, 40, 40)';
-	return {
-		backgroundColor: 'rgba(0, 0, 0, 0)',
-		borderColor: borderColor,
-		borderLeftColor: borderColor,
-		borderTopColor: borderColor,
-		borderRightColor: borderColor,
-		borderBottomColor: borderColor,
-		opacity: 1,
-		borderWidth: 0.25,
-		borderRadius: 0,
-		boxSizing: 'border-box',
-		boxShadow: 'none',
-		shadowOpacity: 0,
+	export function createEmptyBlockStyle(): object {
+		"worklet";
+		const borderColor = 'rgb(40, 40, 40)';
+		return {
+			backgroundColor: 'rgba(0, 0, 0, 0)',
+			borderColor: borderColor,
+			borderLeftColor: borderColor,
+			borderTopColor: borderColor,
+			borderRightColor: borderColor,
+			borderBottomColor: borderColor,
+			opacity: 1,
+			borderWidth: 0.25,
+			borderRadius: 0,
+			shadowOpacity: 0,
+		}
 	}
-}
