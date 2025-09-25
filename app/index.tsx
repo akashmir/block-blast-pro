@@ -21,6 +21,14 @@ configureReanimatedLogger({
 	level: ReanimatedLogLevel.warn,
 });
 
+// Additional safety configuration for Reanimated
+if (__DEV__) {
+	// Enable more verbose logging in development
+	configureReanimatedLogger({
+		level: ReanimatedLogLevel.info,
+	});
+}
+
 export default function App() {
 	const [loaded] = useFonts({
 		"Press-Start-2P": require("../assets/fonts/PressStart2P-Regular.ttf"),

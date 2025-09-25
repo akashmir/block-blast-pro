@@ -76,99 +76,143 @@ export const Game = (({gameMode}: {gameMode: GameModeType}) => {
 
 	const handleDragEnd: DndProviderProps["onDragEnd"] = ({ active, over }) => {
 		"worklet";
-		if (over) {
-			if (draggingPiece.value == null) {
-				return;
-			}
-
-			const dropIdStr = over.id.toString();
-			const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
-			const piece: PieceData = hand.value[draggingPiece.value!]!;
-
-			// the block is gonna fit, let's place the block
-			// we'll do the haptics now
-			if (Platform.OS != 'web')
-				runPiecePlacedHaptic();
-
-			const newBoard = clearHoverBlocks([...board.value]);
-			placePieceOntoBoard(newBoard, piece, dropX, dropY, BoardBlockType.FILLED)
-			const linesBroken = breakLines(newBoard);
-			// add score from placing block
-			const pieceBlockCount = getBlockCount(piece);
-			score.value += pieceBlockCount;
-			if (linesBroken > 0) {
-				lastBrokenLine.value = 0;
-				combo.value += linesBroken;
-				// line break score + combo multiplier stuff
-				score.value += linesBroken * boardLength * (combo.value / 2) * pieceBlockCount;
-			} else {
-				lastBrokenLine.value++;
-				if (lastBrokenLine.value >= handSize) {
-					combo.value = 0;
+		try {
+			if (over) {
+				if (draggingPiece.value == null) {
+					return;
 				}
-			}
-			if (scoreStorageId.value)
-				runOnJS(updateHighScore)(scoreStorageId.value!, {score: score.value, date: new Date().getTime(), type: gameMode});
-			
-			const newHand = [...hand.value];
-			newHand[draggingPiece.value!] = null;
 
-			// is hand empty?
-			let empty = true
-			for (let i = 0; i < handSize; i++) {
-				if (newHand[i] != null) {
-					empty = false;
-					break;
+				const dropIdStr = over.id.toString();
+				const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
+				const piece: PieceData = hand.value[draggingPiece.value!]!;
+
+				// Validate piece exists
+				if (!piece) {
+					draggingPiece.value = null;
+					possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
+					return;
 				}
-			}
-			if (empty) {
-				hand.value = createRandomHandWorklet(handSize);
+
+				// the block is gonna fit, let's place the block
+				// we'll do the haptics now
+				if (Platform.OS != 'web') {
+					try {
+						runPiecePlacedHaptic();
+					} catch (hapticError) {
+						// Ignore haptic errors
+					}
+				}
+
+				const newBoard = clearHoverBlocks([...board.value]);
+				placePieceOntoBoard(newBoard, piece, dropX, dropY, BoardBlockType.FILLED)
+				const linesBroken = breakLines(newBoard);
+				// add score from placing block
+				const pieceBlockCount = getBlockCount(piece);
+				score.value += pieceBlockCount;
+				if (linesBroken > 0) {
+					lastBrokenLine.value = 0;
+					combo.value += linesBroken;
+					// line break score + combo multiplier stuff
+					score.value += linesBroken * boardLength * (combo.value / 2) * pieceBlockCount;
+				} else {
+					lastBrokenLine.value++;
+					if (lastBrokenLine.value >= handSize) {
+						combo.value = 0;
+					}
+				}
+				if (scoreStorageId.value) {
+					try {
+						runOnJS(updateHighScore)(scoreStorageId.value!, {score: score.value, date: new Date().getTime(), type: gameMode});
+					} catch (updateError) {
+						// Ignore update errors
+					}
+				}
+				
+				const newHand = [...hand.value];
+				newHand[draggingPiece.value!] = null;
+
+				// is hand empty?
+				let empty = true
+				for (let i = 0; i < handSize; i++) {
+					if (newHand[i] != null) {
+						empty = false;
+						break;
+					}
+				}
+				if (empty) {
+					hand.value = createRandomHandWorklet(handSize);
+				} else {
+					hand.value = newHand;
+				}
+				board.value = newBoard;
 			} else {
-				hand.value = newHand;
+				board.value = clearHoverBlocks([...board.value]);
 			}
-			board.value = newBoard;
-		} else {
+		} catch (error) {
+			// Reset state on any error
 			board.value = clearHoverBlocks([...board.value]);
+		} finally {
+			draggingPiece.value = null;
+			possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
 		}
-		draggingPiece.value = null;
-		possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
 	};
 
 	const handleBegin: DndProviderProps["onBegin"] = (event, meta) => {
 		"worklet";
-		const handIndex = Number(meta.activeId.toString());
-		if (hand.value[handIndex] != null) {
-			draggingPiece.value = handIndex;
-			possibleBoardDropSpots.value = createPossibleBoardSpots(board.value, hand.value[handIndex]);
+		try {
+			const handIndex = Number(meta.activeId.toString());
+			if (hand.value[handIndex] != null) {
+				draggingPiece.value = handIndex;
+				possibleBoardDropSpots.value = createPossibleBoardSpots(board.value, hand.value[handIndex]);
+			}
+		} catch (error) {
+			// Reset state on error
+			draggingPiece.value = null;
+			possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
 		}
 	};
 
 	const handleFinalize: DndProviderProps["onFinalize"] = ({ state }) => {
 		"worklet";
-		if (state !== State.END) {
+		try {
+			if (state !== State.END) {
+				draggingPiece.value = null;
+			}
+		} catch (error) {
+			// Reset state on error
 			draggingPiece.value = null;
 		}
 	};
 
 	const handleUpdate: DndProviderProps["onUpdate"] = (event, {activeId, activeLayout, droppableActiveId}) => {
 		"worklet";
-		if (!droppableActiveId) {
+		try {
+			if (!droppableActiveId) {
+				board.value = clearHoverBlocks([...board.value]);
+				return;
+			}
+
+			if (draggingPiece.value == null) {
+				return;
+			}
+
+			const dropIdStr = droppableActiveId.toString();
+			const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
+			const piece: PieceData = hand.value[draggingPiece.value!]!;
+
+			// Validate piece exists
+			if (!piece) {
+				return;
+			}
+
+			const newBoard = clearHoverBlocks([...board.value]);
+			updateHoveredBreaks(newBoard, piece, dropX, dropY);
+
+			board.value = newBoard;
+		} catch (error) {
+			// Reset board state on error
 			board.value = clearHoverBlocks([...board.value]);
-			return;
 		}
-
-		if (draggingPiece.value == null) {
-			return;
-		}
-
-		const dropIdStr = droppableActiveId.toString();
-		const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
-		const piece: PieceData = hand.value[draggingPiece.value!]!;
-
-		const newBoard = clearHoverBlocks([...board.value]);
-		updateHoveredBreaks(newBoard, piece, dropX, dropY);
-
-		board.value = newBoard
 	}
 	
 	return (        
@@ -176,7 +220,14 @@ export const Game = (({gameMode}: {gameMode: GameModeType}) => {
 			<GestureHandlerRootView style={styles.root}>
 				<View style={styles.root}>
 					<StickyGameHud gameMode={gameMode} score={score}></StickyGameHud>
-					<DndProvider shouldDropWorklet={pieceOverlapsRectangle} springConfig={SPRING_CONFIG_MISSED_DRAG} onBegin={handleBegin} onFinalize={handleFinalize} onDragEnd={handleDragEnd} onUpdate={handleUpdate}>
+					<DndProvider 
+						shouldDropWorklet={pieceOverlapsRectangle} 
+						springConfig={SPRING_CONFIG_MISSED_DRAG} 
+						onBegin={handleBegin} 
+						onFinalize={handleFinalize} 
+						onDragEnd={handleDragEnd} 
+						onUpdate={handleUpdate}
+					>
 						<StatsGameHud score={score} combo={combo} lastBrokenLine={lastBrokenLine} hand={hand}></StatsGameHud>
 						<BlockGrid board={board} possibleBoardDropSpots={possibleBoardDropSpots} hand={hand} draggingPiece={draggingPiece}></BlockGrid>
 						<HandPieces hand={hand}></HandPieces>

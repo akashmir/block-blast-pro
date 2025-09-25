@@ -65,11 +65,31 @@ An addictive block puzzle game inspired by Block Blast! Built with React Native 
 └── assets/                # Images, fonts, sounds
 ```
 
+## Project Status
+
+✅ **Current Status**: Production Ready
+- ✅ Core gameplay fully implemented
+- ✅ Local APK build working
+- ✅ Web version functional
+- ✅ Mock services for monetization features
+- ✅ Modern React Native + Expo setup
+- ✅ TypeScript implementation
+- ✅ Cross-platform compatibility
+
+### Recent Updates
+- Migrated from `expo eject` to `expo prebuild` (modern approach)
+- Implemented local APK build with React Native CLI
+- Fixed mobile rendering issues (boxShadow compatibility)
+- Added comprehensive error handling and debugging
+- Configured proper keystore signing for release builds
+
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v16 or higher)
+- Node.js v18.20.4 (required for Expo SDK 52 compatibility)
 - Expo CLI
+- Java Development Kit (JDK 23)
+- Android Studio with Android SDK
 - iOS Simulator or Android Emulator (for testing)
 
 ### Installation
@@ -147,6 +167,30 @@ npm run web
 - Premium themes ($1.99)
 - Premium subscription ($4.99/month)
 
+## Testing
+
+### Web Testing
+```bash
+npm start
+# Open http://localhost:8082 in browser
+```
+
+### Android Testing
+1. **Emulator**: Install APK on Android emulator
+```bash
+adb install android/app/build/outputs/apk/release/app-release.apk
+```
+
+2. **Physical Device**: Transfer APK to device and install
+   - Enable "Install from Unknown Sources" in Android settings
+   - Install the APK file
+
+### Known Issues & Solutions
+- **White Screen on Mobile**: Fixed by replacing `boxShadow` with React Native shadow properties
+- **Node.js Compatibility**: Use Node.js v18.20.4 for Expo SDK 52
+- **Disk Space**: Ensure at least 10GB free space for builds
+- **Expo Go Compatibility**: Project uses SDK 52, may need Expo Go SDK 52
+
 ## Analytics Events
 
 The app tracks the following events:
@@ -159,13 +203,76 @@ The app tracks the following events:
 
 ## Building for Production
 
-### Android
+### Local APK Build (Recommended)
+
+This project supports local APK builds using React Native CLI with `expo prebuild`. This approach provides better control and faster builds.
+
+#### Prerequisites for Local Build
+- Node.js v18.20.4 (compatible with Expo SDK 52)
+- Java Development Kit (JDK 23)
+- Android Studio with Android SDK
+- At least 10GB free disk space
+
+#### Environment Setup
+1. Set environment variables:
 ```bash
-expo build:android
+# Windows PowerShell
+$env:ANDROID_HOME = "C:\Users\YourUsername\AppData\Local\Android\Sdk"
+$env:PATH += ";$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\tools;$env:ANDROID_HOME\tools\bin"
 ```
 
-### iOS
+2. Verify setup:
 ```bash
+adb version
+java -version
+```
+
+#### Build Process
+1. Generate native code:
+```bash
+npx expo prebuild --platform android
+```
+
+2. Build release APK:
+```bash
+cd android
+.\gradlew clean
+.\gradlew assembleRelease
+```
+
+3. APK location:
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+#### Keystore Configuration
+The project includes a development keystore (`block-blast-release-key.keystore`) with password `blockblast123`. For production, generate your own keystore:
+
+```bash
+keytool -genkeypair -v -keystore your-release-key.keystore -alias your-key-alias -keyalg RSA -keysize 2048 -validity 10000
+```
+
+### EAS Build (Cloud)
+```bash
+# Install EAS CLI
+npm install -g eas-cli
+
+# Configure
+eas build:configure
+
+# Build for Android
+eas build --platform android
+
+# Build for iOS
+eas build --platform ios
+```
+
+### Legacy Expo Build (Deprecated)
+```bash
+# Android
+expo build:android
+
+# iOS
 expo build:ios
 ```
 
