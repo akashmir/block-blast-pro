@@ -128,11 +128,17 @@ export function placePieceOntoBoard(
   blockType: BoardBlockType,
 ) {
   "worklet";
+  const boardLength = board.length;
   for (let y = 0; y < piece.matrix.length; y++) {
     for (let x = 0; x < piece.matrix[0].length; x++) {
       if (piece.matrix[y][x] == 1) {
-        board[dropY + y][dropX + x].blockType = blockType;
-        board[dropY + y][dropX + x].color = piece.color;
+        const targetX = dropX + x;
+        const targetY = dropY + y;
+        // Add bounds checking to prevent crashes
+        if (targetX >= 0 && targetX < boardLength && targetY >= 0 && targetY < boardLength) {
+          board[targetY][targetX].blockType = blockType;
+          board[targetY][targetX].color = piece.color;
+        }
       }
     }
   }

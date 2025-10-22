@@ -46,7 +46,20 @@ const SPRING_CONFIG_MISSED_DRAG = {
 
 function decodeDndId(id: string): XYPoint {
 	"worklet";
-	return {x: Number(id[0]), y: Number(id[2])}
+	try {
+		const parts = id.split(',');
+		if (parts.length !== 2) {
+			return {x: 0, y: 0};
+		}
+		const x = Number(parts[0]);
+		const y = Number(parts[1]);
+		if (isNaN(x) || isNaN(y)) {
+			return {x: 0, y: 0};
+		}
+		return {x, y};
+	} catch (error) {
+		return {x: 0, y: 0};
+	}
 }
 
 function impactAsyncHelper(style: Haptics.ImpactFeedbackStyle) {
@@ -107,6 +120,13 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 
 				// Validate piece exists
 				if (!piece) {
+					draggingPiece.value = null;
+					possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
+					return;
+				}
+
+				// Validate drop coordinates are within bounds
+				if (dropX < 0 || dropY < 0 || dropX >= boardLength || dropY >= boardLength) {
 					draggingPiece.value = null;
 					possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
 					return;
@@ -271,6 +291,11 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 				return;
 			}
 
+			// Validate drop coordinates are within bounds
+			if (dropX < 0 || dropY < 0 || dropX >= boardLength || dropY >= boardLength) {
+				return;
+			}
+
 			const newBoard = clearHoverBlocks([...board.value]);
 			updateHoveredBreaks(newBoard, piece, dropX, dropY);
 
@@ -279,7 +304,7 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 			// Reset board state on error
 			board.value = clearHoverBlocks([...board.value]);
 		}
-	}
+	};
 
 	const handlePowerUpUsed = (powerUpId: string) => {
 		// Handle power-up logic here
