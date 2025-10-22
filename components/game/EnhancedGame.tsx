@@ -5,12 +5,12 @@ import { Platform, SafeAreaView, StyleSheet, View, Modal, Text } from 'react-nat
 import { GestureHandlerRootView, State } from 'react-native-gesture-handler';
 import { ReduceMotion, runOnJS, useSharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { BoardBlockType, GRID_BLOCK_SIZE, JS_emptyPossibleBoardSpots, PossibleBoardSpots, XYPoint, breakLines, clearHoverBlocks, createPossibleBoardSpots, emptyPossibleBoardSpots, newEmptyBoard, placePieceOntoBoard, updateHoveredBreaks } from '@/constants/Board';
+import { BoardBlockType, GRID_BLOCK_SIZE, JS_emptyPossibleBoardSpots, PossibleBoardSpots, XYPoint, breakLines, clearHoverBlocks, createPossibleBoardSpots, emptyPossibleBoardSpots, newEmptyBoard, placePieceOntoBoard, updateHoveredBreaks, canAnyPieceFit } from '@/constants/Board';
 import { StatsGameHud, StickyGameHud } from '@/components/game/GameHud';
 import BlockGrid from '@/components/game/BlockGrid';
 import { createRandomHand, createRandomHandWorklet } from '@/constants/Hand';
 import HandPieces from '@/components/game/HandPieces';
-import { GameModeType } from '@/hooks/useAppState';
+import { GameModeType, MenuStateType, useSetAppState } from '@/hooks/useAppState';
 import { createHighScore, HighScoreId, updateHighScore } from '@/constants/Storage';
 import GameService from '@/services/GameService';
 import BannerAd from '@/components/ads/BannerAd';
@@ -18,6 +18,8 @@ import PowerUpPanel from '@/components/game/PowerUpPanel';
 import PremiumFeatures from '@/components/premium/PremiumFeatures';
 import Leaderboard from '@/components/social/Leaderboard';
 import Achievements from '@/components/social/Achievements';
+import { GameOverModal } from '@/components/GameOverModal';
+import SoundService from '@/services/SoundService';
 
 // layout = active/dragging
 const pieceOverlapsRectangle = (layout: Rectangle, other: Rectangle) => {
@@ -62,6 +64,10 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 	
 	const boardLength = gameMode == GameModeType.Chaos ? 10 : 8;
 	const handSize = gameMode == GameModeType.Chaos ? 5 : 3;
+	
+	// App state management for navigation
+	const [setAppState] = useSetAppState();
+	
 	const board = useSharedValue(newEmptyBoard(boardLength));
 	const draggingPiece = useSharedValue<number | null>(null);
 	const possibleBoardDropSpots = useSharedValue<PossibleBoardSpots>(JS_emptyPossibleBoardSpots(boardLength));
@@ -74,10 +80,47 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 	const scoreStorageId = useSharedValue<HighScoreId | undefined>(undefined);
 	const gameService = GameService.getInstance();
 
+	// Helper functions for game service updates
+	const updateGameServiceScore = (currentScore: number) => {
+		if (gameService.getCurrentStats()) {
+			gameService.updateScore(currentScore);
+			gameService.incrementBlocksPlaced();
+		}
+	};
+
+	const updateGameServiceCombo = (currentCombo: number, linesCleared: number) => {
+		if (gameService.getCurrentStats()) {
+			gameService.updateCombo(currentCombo);
+			gameService.incrementLinesCleared(linesCleared);
+		}
+	};
+
+	const resetGameServiceCombo = (currentCombo: number) => {
+		if (gameService.getCurrentStats()) {
+			gameService.updateCombo(currentCombo);
+		}
+	};
+
+	// Game over handler
+	const handleGameOver = (finalScore: number) => {
+		gameService.endGame();
+		SoundService.getInstance().playGameOver();
+		setShowGameOverModal(true);
+	};
+
+	// Update highest score helper
+	const updateHighestScore = (currentScore: number) => {
+		if (currentScore > highestScore) {
+			setHighestScore(currentScore);
+		}
+	};
+
 	// Modal states
 	const [showPremiumModal, setShowPremiumModal] = useState(false);
 	const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
 	const [showAchievementsModal, setShowAchievementsModal] = useState(false);
+	const [showGameOverModal, setShowGameOverModal] = useState(false);
+	const [highestScore, setHighestScore] = useState(0);
 
 	useEffect(() => {
 		// Initialize game service
@@ -85,6 +128,14 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 		
 		// Start game session
 		gameService.startGame(gameMode);
+
+		// Load high score for this game mode
+		createHighScore({score: 0, date: new Date().getTime(), type: gameMode}).then((id) => {
+			// This will create or get existing high score
+			// We need to get the actual high score value
+			// For now, we'll set it to 0 and update it when needed
+			setHighestScore(0);
+		});
 
 		if (scoreStorageId.value != undefined)
 			return;
@@ -95,190 +146,118 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 
 	const handleDragEnd: DndProviderProps["onDragEnd"] = ({ active, over }) => {
 		"worklet";
-		try {
-			if (over) {
-				if (draggingPiece.value == null) {
-					return;
-				}
-
-				const dropIdStr = over.id.toString();
-				const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
-				const piece: PieceData = hand.value[draggingPiece.value!]!;
-
-				// Validate piece exists
-				if (!piece) {
-					draggingPiece.value = null;
-					possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
-					return;
-				}
-
-				// the block is gonna fit, let's place the block
-				// we'll do the haptics now
-				if (Platform.OS != 'web') {
-					try {
-						runPiecePlacedHaptic();
-					} catch (hapticError) {
-						// Ignore haptic errors
-					}
-				}
-
-				const newBoard = clearHoverBlocks([...board.value]);
-				placePieceOntoBoard(newBoard, piece, dropX, dropY, BoardBlockType.FILLED)
-				const linesBroken = breakLines(newBoard);
-				// add score from placing block
-				const pieceBlockCount = getBlockCount(piece);
-				score.value += pieceBlockCount;
-				
-				// Update game service - wrap in try-catch
-				try {
-					runOnJS(() => {
-						try {
-							if (gameService.getCurrentStats()) {
-								gameService.updateScore(score.value);
-								gameService.incrementBlocksPlaced();
-							}
-						} catch (serviceError) {
-							// Ignore service errors
-						}
-					})();
-				} catch (runOnJSError) {
-					// Ignore runOnJS errors
-				}
-				
-				if (linesBroken > 0) {
-					lastBrokenLine.value = 0;
-					combo.value += linesBroken;
-					// line break score + combo multiplier stuff
-					score.value += linesBroken * boardLength * (combo.value / 2) * pieceBlockCount;
-					
-					// Update game service - wrap in try-catch
-					try {
-						runOnJS(() => {
-							try {
-								if (gameService.getCurrentStats()) {
-									gameService.updateCombo(combo.value);
-									gameService.incrementLinesCleared(linesBroken);
-								}
-							} catch (serviceError) {
-								// Ignore service errors
-							}
-						})();
-					} catch (runOnJSError) {
-						// Ignore runOnJS errors
-					}
-				} else {
-					lastBrokenLine.value++;
-					if (lastBrokenLine.value >= handSize) {
-						combo.value = 0;
-						try {
-							runOnJS(() => {
-								try {
-									if (gameService.getCurrentStats()) {
-										gameService.updateCombo(combo.value);
-									}
-								} catch (serviceError) {
-									// Ignore service errors
-								}
-							})();
-						} catch (runOnJSError) {
-							// Ignore runOnJS errors
-						}
-					}
-				}
-				
-				if (scoreStorageId.value) {
-					try {
-						runOnJS(updateHighScore)(scoreStorageId.value!, {score: score.value, date: new Date().getTime(), type: gameMode});
-					} catch (updateError) {
-						// Ignore update errors
-					}
-				}
-				
-				const newHand = [...hand.value];
-				newHand[draggingPiece.value!] = null;
-
-				// is hand empty?
-				let empty = true
-				for (let i = 0; i < handSize; i++) {
-					if (newHand[i] != null) {
-						empty = false;
-						break;
-					}
-				}
-				if (empty) {
-					hand.value = createRandomHandWorklet(handSize);
-				} else {
-					hand.value = newHand;
-				}
-				board.value = newBoard;
-			} else {
-				board.value = clearHoverBlocks([...board.value]);
+		if (over) {
+			if (draggingPiece.value == null) {
+				return;
 			}
-		} catch (error) {
-			// Reset state on any error
+
+			const dropIdStr = over.id.toString();
+			const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
+			const piece: PieceData = hand.value[draggingPiece.value!]!;
+
+			// the block is gonna fit, let's place the block
+			// we'll do the haptics now
+			if (Platform.OS != 'web')
+				runPiecePlacedHaptic();
+
+			const newBoard = clearHoverBlocks([...board.value]);
+			placePieceOntoBoard(newBoard, piece, dropX, dropY, BoardBlockType.FILLED)
+			const linesBroken = breakLines(newBoard);
+			// add score from placing block
+			const pieceBlockCount = getBlockCount(piece);
+			score.value += pieceBlockCount;
+			
+			// Update game service
+			runOnJS(updateGameServiceScore)(score.value);
+			
+			if (linesBroken > 0) {
+				lastBrokenLine.value = 0;
+				combo.value += linesBroken;
+				// line break score + combo multiplier stuff
+				score.value += linesBroken * boardLength * (combo.value / 2) * pieceBlockCount;
+				
+				// Update game service
+				runOnJS(updateGameServiceCombo)(combo.value, linesBroken);
+			} else {
+				lastBrokenLine.value++;
+				if (lastBrokenLine.value >= handSize) {
+					combo.value = 0;
+					runOnJS(resetGameServiceCombo)(combo.value);
+				}
+			}
+			
+			if (scoreStorageId.value)
+				runOnJS(updateHighScore)(scoreStorageId.value!, {score: score.value, date: new Date().getTime(), type: gameMode});
+			
+			// Update highest score for game over modal
+			runOnJS(updateHighestScore)(score.value);
+			
+			const newHand = [...hand.value];
+			newHand[draggingPiece.value!] = null;
+
+			// is hand empty?
+			let empty = true
+			for (let i = 0; i < handSize; i++) {
+				if (newHand[i] != null) {
+					empty = false;
+					break;
+				}
+			}
+			if (empty) {
+				hand.value = createRandomHandWorklet(handSize);
+			} else {
+				hand.value = newHand;
+			}
+			
+			// Check for game over after updating hand
+			const isGameOver = !canAnyPieceFit(newBoard, hand.value);
+			if (isGameOver) {
+				runOnJS(handleGameOver)(score.value);
+			}
+			
+			board.value = newBoard;
+		} else {
 			board.value = clearHoverBlocks([...board.value]);
-		} finally {
-			draggingPiece.value = null;
-			possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
 		}
+		draggingPiece.value = null;
+		possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
 	};
 
 	const handleBegin: DndProviderProps["onBegin"] = (event, meta) => {
 		"worklet";
-		try {
-			const handIndex = Number(meta.activeId.toString());
-			if (hand.value[handIndex] != null) {
-				draggingPiece.value = handIndex;
-				possibleBoardDropSpots.value = createPossibleBoardSpots(board.value, hand.value[handIndex]);
-			}
-		} catch (error) {
-			// Reset state on error
-			draggingPiece.value = null;
-			possibleBoardDropSpots.value = emptyPossibleBoardSpots(boardLength);
+		const handIndex = Number(meta.activeId.toString());
+		if (hand.value[handIndex] != null) {
+			draggingPiece.value = handIndex;
+			possibleBoardDropSpots.value = createPossibleBoardSpots(board.value, hand.value[handIndex]);
 		}
 	};
 
 	const handleFinalize: DndProviderProps["onFinalize"] = ({ state }) => {
 		"worklet";
-		try {
-			if (state !== State.END) {
-				draggingPiece.value = null;
-			}
-		} catch (error) {
-			// Reset state on error
+		if (state !== State.END) {
 			draggingPiece.value = null;
 		}
 	};
 
 	const handleUpdate: DndProviderProps["onUpdate"] = (event, {activeId, activeLayout, droppableActiveId}) => {
 		"worklet";
-		try {
-			if (!droppableActiveId) {
-				board.value = clearHoverBlocks([...board.value]);
-				return;
-			}
-
-			if (draggingPiece.value == null) {
-				return;
-			}
-
-			const dropIdStr = droppableActiveId.toString();
-			const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
-			const piece: PieceData = hand.value[draggingPiece.value!]!;
-
-			// Validate piece exists
-			if (!piece) {
-				return;
-			}
-
-			const newBoard = clearHoverBlocks([...board.value]);
-			updateHoveredBreaks(newBoard, piece, dropX, dropY);
-
-			board.value = newBoard;
-		} catch (error) {
-			// Reset board state on error
+		if (!droppableActiveId) {
 			board.value = clearHoverBlocks([...board.value]);
+			return;
 		}
+
+		if (draggingPiece.value == null) {
+			return;
+		}
+
+		const dropIdStr = droppableActiveId.toString();
+		const {x: dropX, y: dropY} = decodeDndId(dropIdStr);
+		const piece: PieceData = hand.value[draggingPiece.value!]!;
+
+		const newBoard = clearHoverBlocks([...board.value]);
+		updateHoveredBreaks(newBoard, piece, dropX, dropY);
+
+		board.value = newBoard
 	}
 
 	const handlePowerUpUsed = (powerUpId: string) => {
@@ -302,19 +281,12 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 							onLeaderboardPress={() => setShowLeaderboardModal(true)}
 							onAchievementsPress={() => setShowAchievementsModal(true)}
 						></StickyGameHud>
-					<DndProvider 
-						shouldDropWorklet={pieceOverlapsRectangle} 
-						springConfig={SPRING_CONFIG_MISSED_DRAG} 
-						onBegin={handleBegin} 
-						onFinalize={handleFinalize} 
-						onDragEnd={handleDragEnd} 
-						onUpdate={handleUpdate}
-					>
-						<StatsGameHud score={score} combo={combo} lastBrokenLine={lastBrokenLine} hand={hand}></StatsGameHud>
-						<BlockGrid board={board} possibleBoardDropSpots={possibleBoardDropSpots} hand={hand} draggingPiece={draggingPiece}></BlockGrid>
-						<HandPieces hand={hand}></HandPieces>
-						<PowerUpPanel onPowerUpUsed={handlePowerUpUsed} />
-					</DndProvider>
+						<DndProvider shouldDropWorklet={pieceOverlapsRectangle} springConfig={SPRING_CONFIG_MISSED_DRAG} onBegin={handleBegin} onFinalize={handleFinalize} onDragEnd={handleDragEnd} onUpdate={handleUpdate}>
+							<StatsGameHud score={score} combo={combo} lastBrokenLine={lastBrokenLine} hand={hand}></StatsGameHud>
+							<BlockGrid board={board} possibleBoardDropSpots={possibleBoardDropSpots} hand={hand} draggingPiece={draggingPiece}></BlockGrid>
+							<HandPieces hand={hand}></HandPieces>
+							<PowerUpPanel onPowerUpUsed={handlePowerUpUsed} />
+						</DndProvider>
 						
 						{/* Banner Ad */}
 						<BannerAd style={styles.bannerAd} />
@@ -349,6 +321,28 @@ export const EnhancedGame = (({gameMode}: {gameMode: GameModeType}) => {
 						>
 							<Achievements onClose={() => setShowAchievementsModal(false)} />
 						</Modal>
+						
+						<GameOverModal
+							visible={showGameOverModal}
+							score={score.value}
+							highScore={highestScore}
+							gameMode={gameMode}
+							onRestart={() => {
+								// Reset game state
+								board.value = newEmptyBoard(boardLength);
+								hand.value = createRandomHandWorklet(handSize);
+								score.value = 0;
+								combo.value = 0;
+								lastBrokenLine.value = 0;
+								setShowGameOverModal(false);
+								gameService.startGame(gameMode);
+							}}
+							onMainMenu={() => {
+								setShowGameOverModal(false);
+								// Navigate to main menu
+								setAppState(MenuStateType.MENU);
+							}}
+						/>
 					</View>
 				</GestureHandlerRootView>
 			</SafeAreaView>

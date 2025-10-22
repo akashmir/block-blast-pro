@@ -1,5 +1,6 @@
 import { Color } from "./Color";
 import { getRandomPieceColor, PieceData } from "./Piece";
+import { Hand } from "./Hand";
 
 export const GRID_BLOCK_SIZE = 46;
 export const HAND_BLOCK_SIZE = 22;
@@ -247,4 +248,23 @@ export function forEachBoardBlock(board: Board, each: ((block: BoardBlock, x: nu
       each(board[y][x], x, y);
     }
   }
+}
+
+export function canAnyPieceFit(board: Board, hand: Hand): boolean {
+  'worklet';
+  for (let i = 0; i < hand.length; i++) {
+    const piece = hand[i];
+    if (piece === null) continue;
+    
+    const possibleSpots = createPossibleBoardSpots(board, piece);
+    // Check if there's at least one valid position
+    for (let y = 0; y < possibleSpots.length; y++) {
+      for (let x = 0; x < possibleSpots[y].length; x++) {
+        if (possibleSpots[y][x] === 1) {
+          return true; // Found at least one valid spot
+        }
+      }
+    }
+  }
+  return false; // No piece can fit anywhere
 }

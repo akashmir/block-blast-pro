@@ -64,6 +64,7 @@ class SoundService {
         this.sounds.set(key, sound);
       } catch (error) {
         // Failed to load sound (non-critical)
+        console.warn(`Failed to load sound ${key}`);
       }
     }
   }

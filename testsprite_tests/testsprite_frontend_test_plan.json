@@ -1,0 +1,195 @@
+[
+  {
+    "id": "TC001",
+    "title": "Verify no SIGSEGV crash on game start and during gameplay",
+    "description": "Ensure the game does not crash with SIGSEGV error caused by improper access to shared values during component render or hooks execution.",
+    "category": "stability",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Launch the application on supported devices."
+      },
+      {
+        "type": "action",
+        "description": "Start a new game in both Classic (8x8) and Chaos (10x10) modes."
+      },
+      {
+        "type": "action",
+        "description": "Play the game performing drag-and-drop block placements continuously for at least 10 minutes."
+      },
+      {
+        "type": "assertion",
+        "description": "Observe that the app remains stable without any crash, specifically no SIGSEGV or memory access violations occur."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Validate useAnimatedReaction hooks replace direct shared value access",
+    "description": "Verify that all modified components properly use useAnimatedReaction hooks to manage shared values and no direct .value access is done during render or useEffect causing side effects.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Inspect component behavior of EnhancedGame, Game, BlockGrid, and HandPieces during runtime."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the components consume shared values only via useAnimatedReaction hooks and no direct .value read occurs in render or useEffect."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify correct rendering of game grid and hand piece states without flickering or stale data."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Test EnhancedGame component modal state management and game service integration",
+    "description": "Verify that the modal states (e.g., game over, pause) and game service integration in EnhancedGame component behave correctly after fixing state management.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start a game in EnhancedGame component."
+      },
+      {
+        "type": "action",
+        "description": "Trigger modal states by finishing a game and pausing the game."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm modals display with correct state and update promptly without stale or incorrect states."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify game service integrations such as scoring and state updates happen correctly without delay."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Verify BlockGrid component renders correctly with optimized state management",
+    "description": "Ensure BlockGrid renders all blocks correctly reflecting current game state with optimizations applied using useAnimatedReaction.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Launch game and enter a game mode."
+      },
+      {
+        "type": "action",
+        "description": "Place various block shapes on the grid to trigger line breaks and combo scoring."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify grid components update correctly without rendering glitches or stale block states."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm board length and block element states are consistent with game logic."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Test HandPieces component updates with useAnimatedReaction hooks",
+    "description": "Ensure that the hand pieces state updates correctly on block placement and refreshes without errors or inconsistencies after applying improved state management.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start the game and observe the initial hand pieces loaded."
+      },
+      {
+        "type": "action",
+        "description": "Place blocks from the hand pieces onto the grid repeatedly."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that hand pieces update in real-time and reflect the correct count and shapes without errors."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Ensure Game component stability with fixed useEffect dependencies",
+    "description": "Validate that Game component does not exhibit unstable behavior or crashes due to improper useEffect dependencies or shared value access.",
+    "category": "stability",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Initiate multiple game sessions on various supported devices."
+      },
+      {
+        "type": "action",
+        "description": "Perform normal and rapid gameplay interactions."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm no runtime errors, warnings, or crashes occur in console or logs related to Game component hooks."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Check UI responsiveness and animation smoothness during drag-and-drop",
+    "description": "Verify that drag-and-drop block placement animations remain smooth and responsive with the updated shared value management.",
+    "category": "ui",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start a game and perform repeated drag-and-drop of blocks from hand pieces to grid."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm animations are smooth at 60fps target without jitter or lag across supported devices."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Test error handling when shared values are being updated concurrently",
+    "description": "Simulate scenarios where multiple components update shared values simultaneously to verify app handles concurrency safely without crashes or inconsistent UI.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger multiple concurrent updates to game state and shared values by rapid user inputs and game logic triggers."
+      },
+      {
+        "type": "assertion",
+        "description": "Observe for any race conditions, UI glitches, or application crashes."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Validate no regressions in overall game functionality after code changes",
+    "description": "Run comprehensive gameplay scenarios covering block placement, line breaks, combos, score updates and transitions between game states to ensure no regressions introduced by the refactor/code fixes.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Play through Classic and Chaos modes including multiple rounds."
+      },
+      {
+        "type": "action",
+        "description": "Complete levels triggering combos and line breaks."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify scoring accuracy, UI updates, and game logic correctness remain consistent with product requirements."
+      }
+    ]
+  }
+]

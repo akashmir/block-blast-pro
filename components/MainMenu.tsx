@@ -47,7 +47,7 @@ export default function MainMenu() {
 
 		<BlockerinoLogo style={{position: 'absolute', bottom: 10, left: 10}} blockSize={5}></BlockerinoLogo>
 		<Animated.Text entering={BounceInUp.duration(800)} style={[styles.logo]}>
-			blockerino
+			block blast
 		</Animated.Text>
 
 		<MainButton

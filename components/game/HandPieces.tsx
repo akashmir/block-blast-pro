@@ -139,7 +139,6 @@ function PieceDraggable({ children, id, createStyle, hand, ...otherProps }: Piec
 	}
 
 	const animatedStyle = useAnimatedStyle(() => {
-		runOnJS(updateLayout)();
 		const isSleeping = state.value === "sleeping"; // Should not animate if sleeping
 		const isActive = state.value === "dragging";
 		const isActing = state.value === "acting";
